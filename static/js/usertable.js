@@ -73,18 +73,38 @@ $(".show-note").click(function() {
     $("#note-textarea").val(
         $("#note-body-" + goal_id).text()
     );
-    $("#modal-titlea").text(
+    $("#modal-title").text(
         $("#goal-btn-" + goal_id).text()
     );
     localStorage['goal_id'] = goal_id;
     localStorage['note_changed'] = false;
-    $("#ex1").modal();
+    //$("#note-modal").modal("show"); // doesnt work dunno why
+    $("#btn-open-modal").click(); // workaround
 });
 
 $("#note-textarea").change(function() {
     localStorage['note_changed'] = true;
 });
 
+$(".modal-wide").on("show.bs.modal", function() {
+    var height = $(window).height() - 200;
+    $(this).find(".modal-body").css("max-height", height);
+});
+
+
+$('#note-modal').on('hidden.bs.modal', function() {
+    if (localStorage['note_changed'] === "true") {
+        var new_note = $('#note-textarea').val();
+        $('#note-body-' + localStorage['goal_id']).text(new_note);
+        $.ajax('/update_note/', {
+            type: "POST",
+            data: {
+                goal_id: localStorage['goal_id'],
+                new_note: new_note
+            }
+        });
+    }
+})
 
 // Create 
 
