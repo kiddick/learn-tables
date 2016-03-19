@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+
+{% block content %}
+{% if not session.logged_in %}
+  <div class="container">
+    <div class="row">    
+      <div class="col-md-4 col-md-offset-4">
+        <center>
+          <form action="{{ url_for('login') }}" method="post" name="login">
+            <h1>Log in</h1>
+            <p>Please enter following details:</p>
+            {% from "_formhelpers.html" import render_field %}
+            {{ render_field(form.username, placeholder='Username', class='form-control') }}
+            {{ render_field(form.password, placeholder='Password', class='form-control') }}
+            <br>
+            <input class="btn btn-primary" type="submit" value="Go!">
+          </form> 
+        </center>
+      </div>
+    </div>
+  </div>
+{% else %}
+  <h2>You are already logged in!</h2>
+{% endif %}
+
+{% endblock content %}
