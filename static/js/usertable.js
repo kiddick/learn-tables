@@ -69,18 +69,46 @@ $(".goal-title").click(function() {
 
 $(".show-note").click(function() {
     var goal_id = $(this).attr('goalid');
-    // set value of text area to goal's note
-    $("#note-textarea").val(
-        $("#note-body-" + goal_id).text()
-    );
+    var note_text = $("#note-body-" + goal_id).text();
+    $("#note-content").html(new showdown.Converter().makeHtml(note_text));
+    $("#note-textarea").val(note_text);
     $("#modal-title").text(
         $("#goal-btn-" + goal_id).text()
     );
+
     localStorage['goal_id'] = goal_id;
     localStorage['note_changed'] = false;
+
+    $("#note-textarea").hide();
+    $('#note-content').show();
     //$("#note-modal").modal("show"); // doesnt work dunno why
     $("#btn-open-modal").click(); // workaround
 });
+
+$("#save-note-btn").click(function() {
+    $("#note-textarea").hide();
+    $('#note-content').show();
+    if (localStorage['note_changed'] === "true") {
+
+        var new_note = $('#note-textarea').val();
+        $("#note-content").html(new showdown.Converter().makeHtml(new_note));
+        $('#note-body-' + localStorage['goal_id']).text(new_note);
+
+        $.ajax('/update_note/', {
+            type: "POST",
+            data: {
+                goal_id: localStorage['goal_id'],
+                new_note: new_note
+            }
+        });
+    }
+});
+
+$("#edit-note-btn").click(function() {
+    $('#note-content').hide();
+    $('#note-textarea').show().focus();
+})
+
 
 $("#note-textarea").change(function() {
     localStorage['note_changed'] = true;
@@ -91,20 +119,6 @@ $(".modal-wide").on("show.bs.modal", function() {
     $(this).find(".modal-body").css("max-height", height);
 });
 
-
-$('#note-modal').on('hidden.bs.modal', function() {
-    if (localStorage['note_changed'] === "true") {
-        var new_note = $('#note-textarea').val();
-        $('#note-body-' + localStorage['goal_id']).text(new_note);
-        $.ajax('/update_note/', {
-            type: "POST",
-            data: {
-                goal_id: localStorage['goal_id'],
-                new_note: new_note
-            }
-        });
-    }
-})
 
 // Create 
 
