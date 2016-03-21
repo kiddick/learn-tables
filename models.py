@@ -2,7 +2,7 @@ from peewee import *
 import datetime
 
 
-db = PostgresqlDatabase('learn', user='hakuro')
+db = None
 
 
 class BaseModel(Model):
@@ -44,7 +44,5 @@ class Goal(BaseModel):
 
 def create_db():
     db.connect()
-    db.create_tables([User, Section, Subsection, Goal])
-
-
-# create_db()
+    if not User.table_exists():
+        db.create_tables([User, Section, Subsection, Goal])

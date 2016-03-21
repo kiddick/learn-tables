@@ -1,11 +1,11 @@
-import datetime
 from functools import wraps
 
-from flask import Flask, Blueprint
+from flask import Blueprint
 from flask import redirect, request, session, g
-from flask import url_for, abort, render_template, flash
+from flask import url_for, render_template, flash
 
-from models import db, User, Goal, Section, Subsection
+import models
+
 
 FLASH_ERROR = 'error'
 FLASH_INFO = 'info'
@@ -29,7 +29,7 @@ def login_required(f):
 
 @table_page.before_request
 def before_request():
-    g.db = db
+    g.db = models.db
     g.db.connect()
 
 
@@ -45,12 +45,14 @@ def after_request(response):
 @login_required
 def show_table(username):
     # if session['username'] == username:
-    sections = Section.select().where(Section.user == session['user_id'])
+    sections = models.Section.select().where(
+        models.Section.user == session['user_id'])
     sections = list(sections)[::-1]  # stub
     subsections = []
     for section in sections:
-        subsections += list(Subsection.select().where(Subsection.section == section.id))
-    goals = Goal.select().where(Goal.user == session['user_id'])
+        subsections += list(
+            models.Subsection.select().where(models.Subsection.section == section.id))
+    goals = models.Goal.select().where(models.Goal.user == session['user_id'])
 
     return render_template(
         'usertable.html',
@@ -65,17 +67,17 @@ def show_table(username):
 @table_page.route('/modify_table/create_goal', methods=['POST'])
 @login_required
 def create_goal():
-    Goal.create(
+    models.Goal.create(
         title=request.form['goal_title'],
         user=session['user_id'],
         note='',
         subsection=int(request.form['subsection_id']),
         progress=0
     )
-    Subsection.update(
-        goals_num=Subsection.goals_num + 1
+    models.Subsection.update(
+        goals_num=models.Subsection.goals_num + 1
     ).where(
-        Subsection.id == int(request.form['subsection_id'])).execute()
+        models.Subsection.id == int(request.form['subsection_id'])).execute()
 
     return redirect(url_for('table.show_table', username=session['username']))
 
@@ -83,12 +85,12 @@ def create_goal():
 @table_page.route('/modify_table/create_section', methods=['POST'])
 @login_required
 def create_section():
-    with db.transaction():
-        s = Section.create(
+    with models.db.transaction():
+        s = models.Section.create(
             title=request.form['section_title'],
             user=session['user_id']
         )
-        Subsection.create(
+        models.Subsection.create(
             title='default',
             user=session['user_id'],
             section=s.id
@@ -99,7 +101,7 @@ def create_section():
 @table_page.route('/modify_table/create_subsection', methods=['POST'])
 @login_required
 def create_subsection():
-    Subsection.create(
+    models.Subsection.create(
         title=request.form['subsection_title'],
         user=session['user_id'],
         section=request.form['section_id']
@@ -113,10 +115,10 @@ def create_subsection():
 @login_required
 def update_section():
     try:
-        Section.update(
+        models.Section.update(
             title=request.form['new_title']
         ).where(
-            Section.id == int(request.form['section_id'])).execute()
+            models.Section.id == int(request.form['section_id'])).execute()
 
     except Exception as e:
         print str(e)
@@ -127,10 +129,10 @@ def update_section():
 @login_required
 def update_subsection():
     try:
-        Subsection.update(
+        models.Subsection.update(
             title=request.form['new_title']
         ).where(
-            Subsection.id == int(request.form['subsection_id'])).execute()
+            models.Subsection.id == int(request.form['subsection_id'])).execute()
 
     except Exception as e:
         print str(e)
@@ -141,10 +143,10 @@ def update_subsection():
 @login_required
 def update_note():
     try:
-        Goal.update(
+        models.Goal.update(
             note=request.form['new_note']
         ).where(
-            Goal.id == int(request.form['goal_id'])).execute()
+            models.Goal.id == int(request.form['goal_id'])).execute()
 
     except Exception as e:
         print str(e)
@@ -157,14 +159,14 @@ def update_note():
 @table_page.route('/modify_table/delete_goal', methods=['POST'])
 @login_required
 def delete_goal():
-    goal = Goal.get(Goal.id == int(request.form['goal_id']))
+    goal = models.Goal.get(models.Goal.id == int(request.form['goal_id']))
 
-    Subsection.update(
-        goals_num=Subsection.goals_num - 1
+    models.Subsection.update(
+        goals_num=models.Subsection.goals_num - 1
     ).where(
-        Subsection.id == goal.subsection).execute()
+        models.Subsection.id == goal.subsection).execute()
 
-    Goal.delete().where(Goal.id == goal.id).execute()
+    models.Goal.delete().where(models.Goal.id == goal.id).execute()
 
     return redirect(url_for('table.show_table', username=session['username']))
 
@@ -172,8 +174,8 @@ def delete_goal():
 @table_page.route('/modify_table/delete_subsection', methods=['POST'])
 @login_required
 def delete_subsection():
-    Subsection.delete().where(
-        Subsection.id == int(request.form['subsection_id'])).execute()
+    models.Subsection.delete().where(
+        models.Subsection.id == int(request.form['subsection_id'])).execute()
 
     return redirect(url_for('table.show_table', username=session['username']))
 
@@ -185,9 +187,9 @@ def delete_section():
         flash('Cant delete section which has goals', FLASH_ERROR)
         return redirect(url_for('table.show_table', username=session['username']))
 
-    Subsection.delete().where(
-        Subsection.section.id == int(request.form['section_id'])).execute()
-    Section.delete().where(
-        Section.id == int(request.form['section_id'])).execute()
+    models.Subsection.delete().where(
+        models.Subsection.section.id == int(request.form['section_id'])).execute()
+    models.Section.delete().where(
+        models.Section.id == int(request.form['section_id'])).execute()
 
     return redirect(url_for('table.show_table', username=session['username']))

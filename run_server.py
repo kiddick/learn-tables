@@ -1,30 +1,40 @@
-import datetime
+import os
+
 from functools import wraps
 from hashlib import md5
 
 from flask import Flask
 from flask import redirect, request, session, g
-from flask import url_for, abort, render_template, flash
+from flask import url_for, render_template, flash
+from peewee import PostgresqlDatabase, IntegrityError, DoesNotExist
 
-from models import db, User, Goal, Section, Subsection
+import models
+
 from table import table_page
 from forms import RegistrationForm, LoginForm
 
-DEBUG = True
-SECRET_KEY = '*@H#(PJ#PJF#Fpt^#@vrqjld!^2ci@g*b'
-# todo: parse from config file
 
 app = Flask(__name__)
-app.config.from_object(__name__)
-app.register_blueprint(table_page)
+app.config.from_object(os.environ['APP_SETTINGS'])
+
+DEBUG = app.config['DEBUG']
 
 FLASH_ERROR = 'error'
 FLASH_INFO = 'info'
 
+models.db = PostgresqlDatabase(
+    database=app.config['DATABASE'],
+    user=app.config['USER']
+)
+
+app.register_blueprint(table_page)
+
+models.create_db()
+
 
 @app.before_request
 def before_request():
-    g.db = db
+    g.db = models.db
     g.db.connect()
 
 
@@ -55,14 +65,14 @@ def login():
     form = LoginForm(request.form)
     if request.method == 'POST' and form.validate():
         try:
-            user = User.get(
+            user = models.User.get(
                 username=request.form['username'],
                 password=md5((request.form['password']).encode(
                     'utf-8')).hexdigest()
             )
             auth_user(user)
             return redirect(url_for('homepage'))
-        except User.DoesNotExist:
+        except DoesNotExist:
             flash('Username or password is incorrect', FLASH_ERROR)
     return render_template('login.html', form=form)
 
@@ -78,9 +88,9 @@ def auth_user(user):
 def sign_up():
     form = RegistrationForm(request.form)
     if request.method == 'POST' and form.validate():
-        with db.transaction():
+        with models.db.transaction():
             try:
-                user = User.create(
+                user = models.User.create(
                     username=request.form['username'],
                     password=md5((request.form['password']).encode(
                         'utf-8')).hexdigest(),
